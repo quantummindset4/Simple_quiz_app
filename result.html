@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Result</title>
+</head>
+<body>
+    <h1>Your Score: {{ score }}</h1>
+    <h2>Incorrectly Answered Questions:</h2>
+    <ul>
+        {% for answer in incorrect_answers %}
+            <li>
+                <p><strong>Question {{ answer.question.index }}:</strong> {{ answer.question.question }}</p>
+                <p><strong>Options:</strong></p>
+                <ul>
+                    <li>a: {{ answer.question.options.a }}</li>
+                    <li>b: {{ answer.question.options.b }}</li>
+                    <li>c: {{ answer.question.options.c }}</li>
+                    <li>d: {{ answer.question.options.d }}</li>
+                </ul>
+                <p><strong>Correct Answer:</strong> {{ answer.question.answer }}</p>
+                <p><strong>Your Answer:</strong> {{ answer.question.options[answer.selected_option] }}</p>
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
