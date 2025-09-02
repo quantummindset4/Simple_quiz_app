@@ -1,14 +1,463 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Select Test</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>QM Quiz</title>
+  <meta name="color-scheme" content="dark light"/>
+  <style>
+    :root{--bg:#0b0d10;--bg-2:#0f1217;--panel:rgba(255,255,255,.06);--stroke:rgba(255,255,255,.12);
+      --text:#e6e9ef;--muted:#a9b3c2;--accent:#0a84ff;--accent-2:#64d2ff;--ok:#30d158;--bad:#ff453a;
+      --shadow:0 10px 30px rgba(0,0,0,.35);--radius:16px}
+    @media (prefers-color-scheme: light){
+      :root{--bg:#f6f7fb;--bg-2:#fff;--text:#0b0d10;--muted:#5a6a7d;--panel:rgba(255,255,255,.75);
+      --stroke:rgba(0,0,0,.10);--shadow:0 16px 40px rgba(0,0,0,.08)}
+    }
+    *{box-sizing:border-box} html,body{height:100%} body{margin:0;color:var(--text);
+      font:16px/1.6 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Inter,Ubuntu,system-ui,sans-serif;
+      background: radial-gradient(900px 600px at 15% -10%, #1a2740 0%, transparent 60%),
+                  radial-gradient(900px 600px at 110% 0%, #132b48 0%, transparent 55%),
+                  linear-gradient(180deg,var(--bg),var(--bg-2));}
+    .wrap{max-width:980px;margin:0 auto;padding:32px}
+    header{display:flex;gap:12px;justify-content:center;align-items:center;padding:8px 0 18px}
+    .brand{font-weight:800;letter-spacing:.4px;font-size:38px;margin:0;
+      background:linear-gradient(90deg,#fff 20%,#c7d0dc 60%,#fff 100%);
+      -webkit-background-clip:text;background-clip:text;color:transparent;text-align:center}
+    .cluster{display:grid;gap:18px}
+    .card{background:var(--panel);border:1px solid var(--stroke);border-radius:var(--radius);padding:18px;
+      backdrop-filter:blur(14px) saturate(120%);box-shadow:var(--shadow)}
+    .row{display:grid;gap:14px;grid-template-columns:1fr}
+    @media (min-width:780px){.row{grid-template-columns:1fr 1fr}}
+    .stack{display:flex;gap:10px;flex-wrap:wrap}
+    label{display:block;margin:4px 0 6px;font-weight:600}
+    input[type=text], select, .btn{width:100%;border-radius:12px;border:1px solid var(--stroke);
+      background:rgba(15,18,24,.65);color:var(--text);padding:12px 48px 12px 14px}
+    .btn{cursor:pointer;font-weight:700;letter-spacing:.15px}
+    .btn.primary{background:linear-gradient(180deg,var(--accent),#0b6fe6);border-color:#0b6fe6;color:#fff}
+    .btn.secondary{background:linear-gradient(180deg,#151a22,#0d1218)}
+    .btn.ghost{background:transparent;border-style:dashed}
+    .btn[disabled]{opacity:.55;cursor:not-allowed}
+    .status{margin-top:12px;padding:12px;border-radius:12px;background:rgba(12,18,32,.55);border:1px dashed rgba(255,255,255,.18)}
+    .ok{color:var(--ok)} .err{color:var(--bad)} .muted{color:var(--muted)}
+    .progress{height:4px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden}
+    .progress>i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%}
+    .qbox{margin-top:14px;padding:18px;border-radius:14px;background:rgba(12,18,32,.55);border:1px solid rgba(255,255,255,.10)}
+    .options{display:grid;gap:10px;margin:14px 0}
+    .opt{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid rgba(255,255,255,.12);background:rgba(9,14,26,.6);border-radius:12px}
+    .badge{font-size:.9rem;padding:6px 12px;border-radius:999px;background:linear-gradient(90deg,rgba(10,132,255,.25),rgba(100,210,255,.25));border:1px solid rgba(10,132,255,.45);color:#e3f2ff}
+    .certificate{position:relative;padding:28px;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));border:1px solid var(--stroke)}
+  </style>
 </head>
 <body>
-    <h1>Select Test Level</h1>
-    <div style="text-align:center;">
-        <a href="{{ url_for('start_test') }}"><button>Basic</button></a>
-        <button>Average</button>
-        <button>Advanced</button>
+<div class="wrap">
+  <header><h1 class="brand">QM Quiz</h1></header>
+
+  <section class="card" id="config">
+    <h3 style="margin:0 0 6px">Select / Build Test</h3>
+    <div class="row" style="align-items:end">
+      <div>
+        <label>Choose a quiz (from your home DB)</label>
+        <select id="quizSelect"><option value="">— Select —</option></select>
+      </div>
+      <div>
+        <label>Your name (for certificate)</label>
+        <input id="nameInput" type="text" placeholder="e.g., QM"/>
+      </div>
     </div>
+
+    <div class="row" style="align-items:end;margin-top:10px">
+      <div>
+        <label>Number of questions</label>
+        <select id="qCount">
+          <option>10</option><option selected>20</option><option>30</option><option>40</option><option>50</option>
+        </select>
+      </div>
+      <div class="stack" style="align-self:flex-end">
+        <button id="startBtn" class="btn primary" disabled>Start Quiz</button>
+        <button id="customBtn" class="btn secondary">Custom Quiz</button>
+        <button id="resetBtn" class="btn ghost" style="display:none">Reset</button>
+      </div>
+    </div>
+
+    <div class="status" id="status"><strong>Status:</strong> <span class="muted">loading manifest…</span></div>
+  </section>
+
+  <section class="card" id="quiz" style="display:none">
+    <div class="progress"><i id="bar"></i></div>
+    <div id="qwrap"></div>
+  </section>
+
+  <section class="card" id="results" style="display:none"></section>
+</div>
+
+<!-- Custom modal -->
+<div id="customModal" style="display:none; position:fixed; inset:0; backdrop-filter: blur(8px); background:rgba(0,0,0,.45); z-index:9999">
+  <div style="max-width:880px; margin:40px auto; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:18px; padding:18px">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+      <h3 style="margin:0">Build a Custom Quiz (AI-assisted)</h3>
+      <button id="closeModal" class="btn ghost">Close</button>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <div><label>Skill / Domain</label><input id="p-skill" type="text" placeholder="SAP Basis, Python, Linux"/></div>
+      <div><label>Years of Experience</label><input id="p-yoe" type="text" placeholder="e.g., 3–5, 5+, 10"/></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div><label>Difficulty</label>
+        <select id="p-diff"><option>Beginner</option><option selected>Intermediate</option><option>Advanced</option><option>Mixed</option></select>
+      </div>
+      <div><label>Number of Questions</label><input id="p-count" type="text" placeholder="e.g., 20"/></div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div><label>Must-cover topics</label><input id="p-include" type="text" placeholder="ST22, SM21, RFC, SGEN"/></div>
+      <div><label>Exclude topics</label><input id="p-exclude" type="text" placeholder="optional"/></div>
+    </div>
+
+    <div class="stack" style="margin-top:12px">
+      <button id="buildPrompt" class="btn primary">Build AI Prompt</button>
+      <button id="copyPrompt" class="btn secondary" disabled>Copy Prompt</button>
+    </div>
+
+    <label style="margin-top:12px; display:block">Generated Prompt (send this to any AI)</label>
+    <textarea id="promptOut" rows="8" style="width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(15,18,24,.65); color:#e6e9ef; padding:12px" readonly></textarea>
+
+    <hr style="border-color:rgba(255,255,255,.12); margin:16px 0">
+
+    <label style="display:block">Paste AI JSON here</label>
+    <textarea id="jsonIn" rows="10" style="width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(15,18,24,.65); color:#e6e9ef; padding:12px"
+              placeholder='{"Test Name":"...", "questions":[{"question":"...","options":["A","B","C","D"],"a":2}]}'></textarea>
+
+    <div class="row" style="margin-top:8px">
+      <div><label>Admin token (to save to library)</label><input id="adminToken" type="password" placeholder="required to save"/></div>
+      <div class="stack" style="align-self:flex-end">
+        <button id="loadCustom" class="btn primary">Validate & Load</button>
+        <button id="saveToLib" class="btn secondary">Save to Library</button>
+        <button id="clearCustom" class="btn ghost">Clear</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const MANIFEST_URL = "/manifest.json"; // from your home API
+  const sel = document.getElementById('quizSelect');
+  const nameInput = document.getElementById('nameInput');
+  const qCountSel = document.getElementById('qCount');
+  const statusBox = document.getElementById('status');
+  const startBtn = document.getElementById('startBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const quizCard = document.getElementById('quiz');
+  const qwrap = document.getElementById('qwrap');
+  const bar = document.getElementById('bar');
+  const resultsCard = document.getElementById('results');
+
+  let desiredCount = 20;
+  let quiz = { name:null, items:[], index:0, answers:[] };
+
+  const setStatus = (msg, ok=false) =>
+    statusBox.innerHTML = `<strong>Status:</strong> <span class="${ok?'ok':'err'}">${msg}</span>`;
+  const setMutedStatus = (msg) =>
+    statusBox.innerHTML = `<strong>Status:</strong> <span class="muted">${msg}</span>`;
+  const escapeHtml = s => String(s).replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+
+  qCountSel.addEventListener('change', () => {
+    const v = parseInt(qCountSel.value, 10);
+    desiredCount = isNaN(v) ? 20 : Math.max(1, Math.min(200, v));
+  });
+
+  async function fetchJson(url){
+    const res = await fetch(url, {cache:'no-store', mode:'cors'});
+    if(!res.ok) throw new Error(`Failed ${url} (${res.status})`);
+    return res.json();
+  }
+
+  function normalizeAndValidate(root){
+    const arr = Array.isArray(root) ? root : (root && Array.isArray(root.questions) ? root.questions : null);
+    if(!arr) throw new Error('Invalid JSON: must be an array or {"questions": [...]}');
+    if(arr.length === 0) throw new Error('No questions found');
+
+    return arr.map((it, idx) => {
+      if(!it || typeof it !== 'object') throw new Error(`Q${idx+1}: not an object`);
+      const q = (it.q ?? it.question ?? '').toString().trim();
+      if(!q) throw new Error(`Q${idx+1}: missing question text`);
+
+      let options = null; let a = it.a;
+      if(Array.isArray(it.options)){
+        options = it.options.map(x => x==null?'':String(x));
+      } else {
+        options = [it['1'], it['2'], it['3'], it['4']].map(x => x==null?'':String(x));
+      }
+      if(options.length !== 4) throw new Error(`Q${idx+1}: must provide exactly 4 options`);
+      if(options.some(o => !o || !o.trim())) throw new Error(`Q${idx+1}: options cannot be empty`);
+
+      if(a === undefined || a === null || a === '') throw new Error(`Q${idx+1}: missing correct answer (a)`);
+      let ansIdx = Number(a); if(Number.isNaN(ansIdx)) ansIdx = parseInt(String(a).trim(), 10);
+      if(ansIdx >=1 && ansIdx <=4) ansIdx = ansIdx - 1;
+      if(!(ansIdx>=0 && ansIdx<4)) throw new Error(`Q${idx+1}: answer (a) must be 1–4 (or 0–3)`);
+
+      return { q, options, correct: ansIdx };
+    });
+  }
+
+  function enableStart(name, items){
+    const count = Math.min(desiredCount, items.length);
+    const selected = (count < items.length)
+      ? [...items].sort(() => 0.5 - Math.random()).slice(0, count)
+      : items;
+    quiz = { name, items: selected, index:0, answers: new Array(selected.length).fill(null) };
+    startBtn.disabled = false;
+    setStatus(`Loaded "${name}" with ${selected.length} questions.`, true);
+  }
+
+  // manifest → dropdown
+  async function populateSelect(){
+    sel.innerHTML = '<option value="">— Select —</option>';
+    try{
+      const man = await fetchJson(MANIFEST_URL);
+      const list = Array.isArray(man.quizzes) ? man.quizzes : [];
+      if(!list.length){ setMutedStatus('No quizzes in DB yet. Use Custom Quiz to add one.'); return; }
+
+      // also show categorized list from /api/quizzes for nice labels
+      const meta = await fetchJson('/api/quizzes');
+      const byUrl = new Map();
+      for(const it of meta.items){ byUrl.set(it.url, `${it.skill || 'General'} — ${it.test_name} (${it.count})`); }
+
+      for(const item of list){
+        const url = item.url || item;
+        const opt = document.createElement('option');
+        opt.value = url;
+        opt.textContent = byUrl.get(url) || url.split('/').pop();
+        sel.appendChild(opt);
+      }
+      setMutedStatus('Pick a quiz or build a custom one.');
+    }catch(e){
+      setStatus('Manifest load failed: ' + (e.message||e), false);
+    }
+  }
+  populateSelect();
+
+  sel.addEventListener('change', async () => {
+    startBtn.disabled = true; resultsCard.style.display='none'; quizCard.style.display='none';
+    const file = sel.value; if(!file){ setMutedStatus('Pick a quiz or build a custom one.'); return; }
+    try{
+      setMutedStatus(`loading ${file}…`);
+      const root = await fetchJson(file);
+      const items = normalizeAndValidate(root);
+      const neatName = 'Library Quiz';
+      enableStart(neatName, items);
+    } catch(err){ setStatus(err.message || String(err), false); }
+  });
+
+  startBtn.addEventListener('click', () => {
+    if(!quiz.items.length) return;
+    sel.disabled = true; startBtn.style.display='none'; resetBtn.style.display='inline-flex';
+    resultsCard.style.display='none'; quizCard.style.display='block';
+    bar.style.width = '0%';
+    renderQuestion();
+  });
+
+  resetBtn.addEventListener('click', () => { location.reload(); });
+
+  function updateProgress(){
+    const pct = Math.round(100 * (quiz.index) / Math.max(1, quiz.items.length));
+    bar.style.width = pct + '%';
+  }
+
+  function renderQuestion(){
+    updateProgress();
+    const total = quiz.items.length, i = quiz.index, item = quiz.items[i], chosen = quiz.answers[i];
+
+    const opts = item.options.map((text, idx) => {
+      const id = `opt_${i}_${idx}`; const checked = chosen === idx ? 'checked' : '';
+      return `<label class="opt" for="${id}"><input type="radio" name="q${i}" id="${id}" value="${idx}" ${checked} />
+              <div>${idx+1}. ${escapeHtml(text)}</div></label>`;
+    }).join('');
+
+    qwrap.innerHTML = `
+      <div class="qbox">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="badge">${i+1}/${total}</div>
+          <div class="muted">${escapeHtml(quiz.name || '')}</div>
+        </div>
+        <h2 style="margin:6px 0 10px;font-weight:700">${escapeHtml(item.q)}</h2>
+        <div class="options">${opts}</div>
+        <div class="stack">
+          <button id="nextBtn" class="btn primary" ${chosen==null?'disabled':''}>${i===total-1?'Finish':'Next question'}</button>
+          ${i>0?'<button id="prevBtn" class="btn secondary">Back</button>':''}
+        </div>
+      </div>`;
+
+    Array.from(qwrap.querySelectorAll('input[type=radio]')).forEach(inp => {
+      inp.addEventListener('change', () => {
+        quiz.answers[i] = Number(inp.value);
+        const nb = qwrap.querySelector('#nextBtn'); if(nb) nb.disabled = false;
+      });
+    });
+
+    qwrap.querySelector('#nextBtn').addEventListener('click', () => {
+      if(quiz.answers[i]==null) return;
+      if(i === total-1) finish(); else { quiz.index++; renderQuestion(); }
+    });
+
+    const prev = qwrap.querySelector('#prevBtn');
+    if(prev){ prev.addEventListener('click', () => { quiz.index = Math.max(0, quiz.index-1); renderQuestion(); }); }
+  }
+
+  function finish(){
+    quizCard.style.display='none';
+    const total = quiz.items.length; let correct = 0; const misses = [];
+    quiz.items.forEach((it, i) => {
+      const picked = quiz.answers[i];
+      if(picked === it.correct) correct++; else misses.push({ i, q: it.q, picked, correct: it.correct, options: it.options });
+    });
+
+    const pct = Math.round(100*correct/Math.max(1,total));
+    const participant = (nameInput.value || '').trim() || 'Participant';
+    const today = new Date();
+    const dateStr = today.toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+
+    const missHtml = misses.length ? misses.map(m => `
+      <div class="review-item" style="margin:6px 0 12px 0">
+        <div><strong>Q${m.i+1}: ${escapeHtml(m.q)}</strong></div>
+        <div class="muted">Picked: ${m.picked!=null?escapeHtml((m.picked+1)+'. '+m.options[m.picked]):'<em>no answer</em>'}</div>
+        <div>Correct: <strong>${escapeHtml((m.correct+1)+'. '+m.options[m.correct])}</strong></div>
+      </div>`).join('') : '<p class="muted">Zero misses. Clean sheet.</p>';
+
+    resultsCard.innerHTML = `
+      <div class="certificate">
+        <div class="muted" style="text-align:center;margin-bottom:8px">Certificate of Achievement</div>
+        <div style="text-align:center;font-size:26px;font-weight:800">${escapeHtml(participant)}</div>
+        <div class="row" style="margin-top:12px">
+          <div><strong>Score:</strong> ${correct}/${total} (${pct}%)</div>
+          <div><strong>Date:</strong> ${escapeHtml(dateStr)}</div>
+        </div>
+      </div>
+      <div style="margin-top:12px" class="stack">
+        <button id="retakeBtn" class="btn secondary">Retake</button>
+        <button id="againBtn" class="btn ghost">Choose another test</button>
+      </div>
+      <details style="margin-top:10px"><summary><strong>Show detailed review</strong></summary>${missHtml}</details>
+    `;
+    resultsCard.style.display='block';
+
+    document.getElementById('retakeBtn').addEventListener('click', () => {
+      quiz.index = 0; quiz.answers = new Array(quiz.items.length).fill(null);
+      resultsCard.style.display='none'; quizCard.style.display='block'; bar.style.width = '0%'; renderQuestion();
+    });
+    document.getElementById('againBtn').addEventListener('click', () => { location.reload(); });
+  }
+
+  // --------- Custom modal logic ---------
+  const customBtn = document.getElementById('customBtn');
+  const customModal = document.getElementById('customModal');
+  const closeModal = document.getElementById('closeModal');
+  const buildPromptBtn = document.getElementById('buildPrompt');
+  const copyPromptBtn = document.getElementById('copyPrompt');
+  const promptOut = document.getElementById('promptOut');
+  const jsonIn = document.getElementById('jsonIn');
+  const loadCustomBtn = document.getElementById('loadCustom');
+  const clearCustomBtn = document.getElementById('clearCustom');
+  const saveBtn = document.getElementById('saveToLib');
+  const adminTokenInput = document.getElementById('adminToken');
+
+  const pSkill = document.getElementById('p-skill');
+  const pYoe = document.getElementById('p-yoe');
+  const pDiff = document.getElementById('p-diff');
+  const pCount = document.getElementById('p-count');
+  const pInclude = document.getElementById('p-include');
+  const pExclude = document.getElementById('p-exclude');
+
+  customBtn.addEventListener('click', ()=> customModal.style.display='block');
+  closeModal.addEventListener('click', ()=> customModal.style.display='none');
+
+  buildPromptBtn.addEventListener('click', ()=>{
+    const skill = (pSkill.value||'').trim() || 'SAP Basis';
+    const yoe = (pYoe.value||'').trim() || '3–5';
+    const diff = (pDiff.value||'Intermediate').trim();
+    const count = (pCount.value||'20').trim();
+    const include = (pInclude.value||'').trim();
+    const exclude = (pExclude.value||'').trim();
+    const must = include ? `Must cover: ${include}.` : '';
+    const no = exclude ? `Avoid: ${exclude}.` : '';
+
+    const prompt = `Create a multiple-choice quiz JSON for a ${diff} ${skill} assessment targeting ${yoe} years experience.
+Return JSON ONLY in one of these formats:
+1) Wrapped:
+{
+  "Test Name": "Custom ${skill} (${diff}, ${yoe})",
+  "questions": [
+    {"question":"...","options":["A","B","C","D"],"a":2}
+  ]
+}
+2) Flat:
+[
+  {"q":"...","options":["A","B","C","D"],"a":2}
+]
+
+Rules:
+- Exactly ${count} questions.
+- Each question has EXACTLY 4 options (A–D). No extra keys.
+- "a" is the correct answer index; 1–4 preferred (0–3 also accepted).
+- Keep questions realistic, scenario-driven, and non-trivial. No duplicates.
+${must}
+${no}
+Return ONLY valid JSON with no comments, no markdown, no extra text.`;
+
+    promptOut.value = prompt;
+    copyPromptBtn.disabled = false;
+  });
+
+  copyPromptBtn.addEventListener('click', ()=>{
+    promptOut.select(); document.execCommand('copy');
+    copyPromptBtn.textContent = 'Copied!'; setTimeout(()=> copyPromptBtn.textContent='Copy Prompt', 1200);
+  });
+
+  clearCustomBtn.addEventListener('click', ()=> jsonIn.value = '');
+
+  loadCustomBtn.addEventListener('click', ()=>{
+    try{
+      const obj = JSON.parse(jsonIn.value);
+      const items = normalizeAndValidate(obj);
+      const neatName = (obj && (obj['Test Name'] || obj.testName || (obj.meta && obj.meta.testName))) || 'Custom Quiz';
+      sel.disabled = true; startBtn.style.display='none'; resetBtn.style.display='inline-flex';
+      resultsCard.style.display='none'; quizCard.style.display='block'; bar.style.width='0%';
+      enableStart(neatName, items); customModal.style.display='none'; renderQuestion();
+    }catch(e){
+      setStatus(`Custom quiz error: ${e.message||e}`, false);
+    }
+  });
+
+  saveBtn.addEventListener('click', async ()=>{
+    try{
+      const obj = JSON.parse(jsonIn.value);
+      // front-end validation first
+      normalizeAndValidate(obj);
+      const body = {
+        json: obj,
+        skill: (pSkill.value||'').trim(),
+        difficulty: (pDiff.value||'Mixed').trim(),
+        yoe: (pYoe.value||'N/A').trim()
+      };
+      const token = (adminTokenInput.value||'').trim();
+      if(!token){ setStatus('Admin token required to save', false); return; }
+
+      const res = await fetch('/api/quiz/import', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.detail || 'Save failed');
+      setStatus(`Saved. New quiz: ${data.meta.test_name}`, true);
+      await populateSelect();
+    }catch(e){
+      setStatus('Save error: ' + (e.message || e), false);
+    }
+  });
+
+  setMutedStatus('loading manifest…');
+})();
+</script>
 </body>
 </html>

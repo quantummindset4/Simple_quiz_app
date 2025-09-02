@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: qm_db
+    environment:
+      POSTGRES_DB: quizdb
+      POSTGRES_USER: quiz
+      POSTGRES_PASSWORD: change-me   # <-- change
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quiz -d quizdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: ./backend
+    container_name: qm_app
+    environment:
+      DB_URL: postgresql+psycopg2://quiz:change-me@db:5432/quizdb
+      ADMIN_TOKEN: super-secret-admin-token   # <-- change
+      PUBLIC_BASE_URL: https://custom.quantummindset.click
+      CORS_ALLOW_ORIGINS: "*"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
