@@ -372,41 +372,49 @@
   closeModal.addEventListener('click', ()=> customModal.style.display='none');
 
   buildPromptBtn.addEventListener('click', ()=>{
-    const skill = (pSkill.value||'').trim() || 'SAP Basis';
-    const yoe = (pYoe.value||'').trim() || '3–5';
-    const diff = (pDiff.value||'Intermediate').trim();
-    const count = (pCount.value||'20').trim();
-    const include = (pInclude.value||'').trim();
-    const exclude = (pExclude.value||'').trim();
-    const must = include ? `Must cover: ${include}.` : '';
-    const no = exclude ? `Avoid: ${exclude}.` : '';
+  const skill   = (pSkill.value||'').trim() || 'SAP Basis';
+  const yoe     = (pYoe.value||'').trim()   || '3–5';
+  const diff    = (pDiff.value||'Intermediate').trim();
+  const count   = (pCount.value||'20').trim();
+  const include = (pInclude.value||'').trim();
+  const exclude = (pExclude.value||'').trim();
 
-    const prompt = `Create a multiple-choice quiz JSON for a ${diff} ${skill} assessment targeting ${yoe} years experience.
-Return JSON ONLY in one of these formats:
-1) Wrapped:
+  const must = include ? `Must cover: ${include}.` : '';
+  const no   = exclude ? `Avoid: ${exclude}.` : '';
+
+  const prompt = `You are generating a multiple-choice question set.
+
+Goal:
+• Topic/Skill: ${skill}
+• Difficulty: ${diff}
+• Target experience: ${yoe}
+• Number of questions: ${count}
+
+Produce realistic, scenario-driven, non-trivial questions. ${must} ${no}
+
+OUTPUT FORMAT (single JSON document, RFC 8259 — data only):
 {
   "Test Name": "Custom ${skill} (${diff}, ${yoe})",
   "questions": [
-    {"question":"...","options":["A","B","C","D"],"a":2}
+    { "question": "<text>",
+      "options": ["<A>", "<B>", "<C>", "<D>"],
+      "a": <1-4>
+    }
   ]
 }
-2) Flat:
-[
-  {"q":"...","options":["A","B","C","D"],"a":2}
-]
 
-Rules:
-- Exactly ${count} questions.
-- Each question has EXACTLY 4 options (A–D). No extra keys.
-- "a" is the correct answer index; 1–4 preferred (0–3 also accepted).
-- Keep questions realistic, scenario-driven, and non-trivial. No duplicates.
-${must}
-${no}
-Return ONLY valid JSON with no comments, no markdown, no extra text.`;
+Strict rules:
+• "questions" is an array of exactly ${count} items.
+• Each "options" array has exactly 4 distinct, non-empty strings.
+• "a" is an integer 1–4 selecting the correct option.
+• Use proper JSON quoting. No trailing commas.
+• Do not include markdown, code fences, comments, or extra prose.
+• Do not insert unnecessary backslashes before [, ], *, or _.
+• Provide the data as a valid JSON document only.`;
 
-    promptOut.value = prompt;
-    copyPromptBtn.disabled = false;
-  });
+  promptOut.value = prompt;
+  copyPromptBtn.disabled = false;
+});
 
   copyPromptBtn.addEventListener('click', ()=>{
     promptOut.select(); document.execCommand('copy');
